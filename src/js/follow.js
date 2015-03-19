@@ -4,11 +4,11 @@ var circle = svg.selectAll("circle")
                 .data(data)
                 .enter()
                 .append("circle")
-                .attr("cx", function (d) { return 100 * d; })
+                .attr("cx", function(d) { return 100 * d; })
                 .attr("cy", 50)
-                .attr("r", function (d) { return 10 * d; });
+                .attr("r", function(d) { return 10 * d; });
 
-svg.on("mousemove", function () {
+svg.on("mousemove", function() {
   var coordinates = d3.mouse(this);
   var originDistance = Math.sqrt(Math.pow(coordinates[0], 2) + Math.pow(coordinates[1], 2));
 
