@@ -1548,7 +1548,6 @@ function dragged() {
   var angle = (Math.atan((d3.event.y - NUT_CENTER) / (d3.event.x - NUT_CENTER)) /
                Math.PI * 180),
       rotateCenter = NUT_CENTER;
-  console.log(angle);
 
   svg.selectAll("path")
      .attr("transform",
@@ -1556,6 +1555,7 @@ function dragged() {
 }
 
 function nut(data) {
+  // TODO: record mouseup location and adjust angle so we don't get jumps on next drag event.
   var centerRadius = data.centerRadius,
       arcRadius = centerRadius / 2,
       path = [],

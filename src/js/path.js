@@ -9,7 +9,6 @@ function dragged() {
   var angle = (Math.atan((d3.event.y - NUT_CENTER) / (d3.event.x - NUT_CENTER)) /
                Math.PI * 180),
       rotateCenter = NUT_CENTER;
-  console.log(angle);
 
   svg.selectAll("path")
      .attr("transform",
