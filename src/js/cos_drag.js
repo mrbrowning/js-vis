@@ -1,3 +1,5 @@
+var _ = require('underscore');
+
 var CIRCLE_SPACING = 1;
 var CIRCLE_RADIUS = 6;
 var NUM_CIRCLES = 80;
@@ -45,9 +47,7 @@ var drag = d3.behavior.drag()
              .on("drag", dragged);
 var start = Date.now();
 var svg = d3.select("svg");
-var data = Array.apply(null, Array(NUM_CIRCLES)).map(function(_, i) {
-  return i;
-});
+var data = _.range(NUM_CIRCLES);
 var circle = svg.selectAll("circle")
                 .data(data)
                 .enter()

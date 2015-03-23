@@ -1,3 +1,5 @@
+var _ = require('underscore');
+
 var CIRCLE_RADIUS = 50;
 var NUM_CIRCLES = 10;
 var SPEED = 20;
@@ -28,9 +30,7 @@ var svg = d3.select("svg")
               }
               running = !running; 
             });
-var data = Array.apply(null, Array(NUM_CIRCLES)).map(function(_, i) {
-  return i;
-});
+var data = _.range(NUM_CIRCLES);
 var circle = svg.selectAll("circle")
                 .data(data)
                 .enter()

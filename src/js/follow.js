@@ -1,5 +1,7 @@
+var _ = require('underscore');
+
 var svg = d3.select("svg");
-var data = [1, 2, 3];
+var data = _.range(1, 4);
 var circle = svg.selectAll("circle")
                 .data(data)
                 .enter()
