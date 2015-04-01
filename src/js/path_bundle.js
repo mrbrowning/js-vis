@@ -1539,10 +1539,106 @@
 },{}],2:[function(require,module,exports){
 var _ = require('underscore');
 
-var NUT_RADIUS = 100,
-    NUT_CENTER = 2 * NUT_RADIUS,
-    NUT_CENTER_RADIUS = NUT_RADIUS - 50,
-    TRANSLATE_STRING = "translate(" + NUT_CENTER + ", " + NUT_CENTER + ")";
+function Nut() {
+  this.centerX = this.centerY = 200;
+  this.radius = 100;
+  this.centerRadius = 50;
+
+  this.adjustmentAngle = 0;
+}
+
+Nut.prototype.getPath=function() {
+  var _this = this,
+      arcRadius = _this.centerRadius / 2,
+      path = [],
+      x = _this.radius,
+      y = 0;
+
+  path.push("M", x, ",", y);
+
+  path.push.apply(path, _.map(_.range(1, 6), function(i) {
+    x = _this.radius * Math.cos(Math.PI * i / 3);
+    y = _this.radius * Math.sin(Math.PI * i / 3);
+
+    return "L" + x + "," + y;
+  }));
+
+  path.push("Z");
+  path.push("M0," + _this.centerRadius);
+  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0,-" + _this.centerRadius);
+  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0," + _this.centerRadius);
+
+  return path.join("");
+}
+
+Nut.prototype.initRotation=function(mouseX, mouseY) {
+  if (this.hasOwnProperty('lastDraggedAngle')) {
+    this.adjustmentAngle = (
+      this.lastDraggedAngle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
+    );
+  } else {
+    this.adjustmentAngle = 0; 
+  }
+};
+
+Nut.prototype.rotate=function(mouseX, mouseY) {
+  var dragAngle = (
+    toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY)) * -1 + this.adjustmentAngle
+  );
+
+  // Normalize the angle so that it remains in the range -180 <= x <= 180.
+  if (dragAngle > 180) {
+    dragAngle = dragAngle - 360;
+  } else if (dragAngle < -180) {
+    dragAngle = dragAngle + 360;
+  }
+  this.lastDraggedAngle = dragAngle;
+
+  this.context.attr(
+    "transform",
+    (
+      "rotate(" + dragAngle + "," + this.centerX + "," + this.centerY + ") translate(" +
+      this.centerX + ", " + this.centerY + ")"
+    )
+  );
+}
+
+function NutBuilder() {
+  this.nut = new Nut();
+};
+
+NutBuilder.prototype.build=function() {
+  return this.nut;
+}
+
+NutBuilder.prototype.setCenter=function(x, y) {
+  this.nut.centerX = x;
+  this.nut.centerY = y;
+
+  return this;
+}
+
+NutBuilder.prototype.setCenterRadius=function(r) {
+  this.nut.centerRadius = r;
+
+  return this;
+}
+
+NutBuilder.prototype.setContext=function(context) {
+  this.nut.context = context.append("path")
+                            .attr("d", this.nut.getPath())
+                            .attr(
+                              "transform",
+                              "translate(" + this.nut.centerX  + ", " + this.nut.centerY + ")"
+                            );
+  return this;
+}
+
+NutBuilder.prototype.setRadius=function(r) {
+  this.nut.radius = r;
+
+  return this;
+}
 
 function angleTo(angleX, angleY, centerX, centerY) {
   return Math.atan2(angleX - centerX, angleY - centerY);
@@ -1552,72 +1648,22 @@ function toDegrees(angle) {
   return angle / Math.PI * 180;
 }
 
-function dragged() {
-  dragAngle = (
-    toDegrees(angleTo(d3.event.x, d3.event.y, NUT_CENTER, NUT_CENTER)) * -1 + adjustmentAngle
-  );
+var nutList = [];
 
-  // Normalize the angle so that it remains in the range -180 <= x <= 180.
-  if (dragAngle > 180) {
-    dragAngle = dragAngle - 360;
-  } else if (dragAngle < -180) {
-    dragAngle = dragAngle + 360;
-  }
-
-  nutPath.attr(
-    "transform",
-    "rotate(" + dragAngle + "," + NUT_CENTER + "," + NUT_CENTER + ") " + TRANSLATE_STRING
-  );
-}
-
-function nut(data) {
-  var centerRadius = data.centerRadius,
-      arcRadius = centerRadius / 2,
-      path = [],
-      radius = data.radius,
-      x = radius,
-      y = 0;
-
-  path.push("M", x, ",", y);
-
-  path.push.apply(path, _.map(_.range(1, 6), function(i) {
-    x = radius * Math.cos(Math.PI * i / 3);
-    y = radius * Math.sin(Math.PI * i / 3);
-
-    return "L" + x + "," + y;
-  }));
-
-  path.push("Z");
-  path.push("M0," + centerRadius);
-  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0,-" + centerRadius);
-  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0," + centerRadius);
-
-  return path.join("");
-}
-
-var adjustmentAngle = 0;
-var dragAngle = 0;
-var lastDraggedAngle = 0;
 var drag = d3.behavior.drag()
-             .on("drag", dragged);
+             .on("drag", function() {
+               _.map(nutList, function(n) {
+                 n.rotate(d3.event.x, d3.event.y);
+               });
+             });
 var svg = d3.select("svg")
-            .call(drag)
-            .on("mouseup", function() {
-              lastDraggedAngle = dragAngle;
-            })
             .on("mousedown", function() {
-              // Account for the difference between where we last saw a mouseup and where we're
-              // starting a drag now -- otherwise the nut will jump from its last rotated-to angle.
-              adjustmentAngle = (
-                lastDraggedAngle -
-                toDegrees(angleTo(d3.event.x, d3.event.y, NUT_CENTER, NUT_CENTER)) *
-                -1
-              );
-            });
+              _.map(nutList, function(n) { 
+                n.initRotation(d3.event.x, d3.event.y);
+              });
+            })
+            .call(drag);
 
-var nutPath = svg.append("path")
-                 .datum({radius: NUT_RADIUS, centerRadius: NUT_CENTER_RADIUS})
-                 .attr("d", nut)
-                 .attr("transform", TRANSLATE_STRING);
+nutList.push((new NutBuilder()).setCenter(400, 200).setContext(svg).build());
 
 },{"underscore":1}]},{},[2]);
