@@ -1545,6 +1545,7 @@ function Nut() {
   this.centerRadius = 50;
 
   this.adjustmentAngle = 0;
+  this.angle = 0;
 }
 
 Nut.prototype.getPath=function() {
@@ -1571,13 +1572,33 @@ Nut.prototype.getPath=function() {
   return path.join("");
 }
 
-Nut.prototype.initRotation=function(mouseX, mouseY) {
-  if (this.hasOwnProperty('lastDraggedAngle')) {
-    this.adjustmentAngle = (
-      this.lastDraggedAngle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
-    );
+Nut.prototype.control=function(mouseX, mouseY) {
+  this.controlFunc(mouseX, mouseY);
+}
+
+Nut.prototype.draw=function() {
+  this.context.attr(
+    "transform",
+    (
+      "rotate(" + this.angle + ", " + this.centerX + ", " + this.centerY + ")" +
+      "translate(" + this.centerX + ", " + this.centerY + ")"
+    )
+  );
+}
+
+Nut.prototype.initControl=function(mouseX, mouseY) {
+  if (this.shouldTranslate(mouseX, mouseY)) {
+    this.controlFunc = this.translate;
+    this.adjustmentTranslation = [-(mouseX - this.centerX), -(mouseY - this.centerY)];
   } else {
-    this.adjustmentAngle = 0; 
+    this.controlFunc = this.rotate;
+    if (this.hasOwnProperty('angle')) {
+      this.adjustmentAngle = (
+        this.angle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
+      );
+    } else {
+      this.adjustmentAngle = 0;
+    }
   }
 };
 
@@ -1592,15 +1613,21 @@ Nut.prototype.rotate=function(mouseX, mouseY) {
   } else if (dragAngle < -180) {
     dragAngle = dragAngle + 360;
   }
-  this.lastDraggedAngle = dragAngle;
+  this.angle = dragAngle;
+  this.draw();
+}
 
-  this.context.attr(
-    "transform",
-    (
-      "rotate(" + dragAngle + "," + this.centerX + "," + this.centerY + ") translate(" +
-      this.centerX + ", " + this.centerY + ")"
-    )
-  );
+Nut.prototype.shouldTranslate=function(mouseX, mouseY) {
+  var distanceX = mouseX - this.centerX;
+  var distanceY = mouseY - this.centerY;
+
+  return Math.sqrt(distanceX * distanceX + distanceY * distanceY) < this.centerRadius;
+}
+
+Nut.prototype.translate=function(mouseX, mouseY) {
+  this.centerX = mouseX + this.adjustmentTranslation[0];
+  this.centerY = mouseY + this.adjustmentTranslation[1];
+  this.draw();
 }
 
 function NutBuilder() {
@@ -1653,13 +1680,13 @@ var nutList = [];
 var drag = d3.behavior.drag()
              .on("drag", function() {
                _.map(nutList, function(n) {
-                 n.rotate(d3.event.x, d3.event.y);
+                 n.control(d3.event.x, d3.event.y);
                });
              });
 var svg = d3.select("svg")
             .on("mousedown", function() {
-              _.map(nutList, function(n) { 
-                n.initRotation(d3.event.x, d3.event.y);
+              _.map(nutList, function(n) {
+                n.initControl(d3.event.x, d3.event.y);
               });
             })
             .call(drag);
