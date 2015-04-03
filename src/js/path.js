@@ -7,7 +7,6 @@ function Nut() {
 
   this.adjustmentAngle = 0;
   this.angle = 0;
-  this.hasRotated = false;
 }
 
 Nut.prototype.control=function(mouseX, mouseY) {
