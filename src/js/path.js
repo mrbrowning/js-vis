@@ -7,30 +7,7 @@ function Nut() {
 
   this.adjustmentAngle = 0;
   this.angle = 0;
-}
-
-Nut.prototype.getPath=function() {
-  var _this = this,
-      arcRadius = _this.centerRadius / 2,
-      path = [],
-      x = _this.radius,
-      y = 0;
-
-  path.push("M", x, ",", y);
-
-  path.push.apply(path, _.map(_.range(1, 6), function(i) {
-    x = _this.radius * Math.cos(Math.PI * i / 3);
-    y = _this.radius * Math.sin(Math.PI * i / 3);
-
-    return "L" + x + "," + y;
-  }));
-
-  path.push("Z");
-  path.push("M0," + _this.centerRadius);
-  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0,-" + _this.centerRadius);
-  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0," + _this.centerRadius);
-
-  return path.join("");
+  this.hasRotated = false;
 }
 
 Nut.prototype.control=function(mouseX, mouseY) {
@@ -47,21 +24,83 @@ Nut.prototype.draw=function() {
   );
 }
 
+Nut.prototype.getPath=function() {
+  var _this = this,
+      arcRadius = _this.centerRadius / 2,
+      path = [],
+      vertices = _this.getVertices(true);
+
+  path.push("M", vertices[0][0], ",", vertices[0][1]);
+  path.push.apply(path, _.map(vertices.slice(1), function(v) {
+    return "L" + v[0] + "," + v[1];
+  }));
+
+  path.push("Z");
+  path.push("M0," + _this.centerRadius);
+  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0,-" + _this.centerRadius);
+  path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0," + _this.centerRadius);
+
+  return path.join("");
+}
+
+Nut.prototype.getVertices=function(isCanonical) {
+  var _this = this;
+  return _.map(_.range(6), function(i) {
+    var angle, translateX, translateY;
+
+    if (isCanonical) {
+      angle = translateX = translateY = 0;
+    } else {
+      angle = toRadians(_this.angle);
+      translateX = _this.centerX;
+      translateY = _this.centerY;
+    }
+
+    var x = _this.radius * Math.cos(Math.PI * i / 3 + angle) + translateX,
+        y = _this.radius * Math.sin(Math.PI * i / 3 + angle) + translateY;
+
+    return [x, y];
+  });
+}
+
 Nut.prototype.initControl=function(mouseX, mouseY) {
   if (this.shouldTranslate(mouseX, mouseY)) {
     this.controlFunc = this.translate;
     this.adjustmentTranslation = [-(mouseX - this.centerX), -(mouseY - this.centerY)];
-  } else {
+  } else if (this.isInPath(mouseX, mouseY)) {
     this.controlFunc = this.rotate;
-    if (this.hasOwnProperty('angle')) {
-      this.adjustmentAngle = (
-        this.angle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
-      );
-    } else {
-      this.adjustmentAngle = 0;
-    }
+    this.adjustmentAngle = (
+      this.angle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
+    );
+  } else {
+    this.controlFunc = function() {};
   }
 };
+
+Nut.prototype.isInPath=function(x, y) {
+  var vertices = this.getVertices(),
+      sides = _.zip(vertices.slice(0, vertices.length - 1), vertices.slice(1))
+               .concat([[_.last(vertices), _.first(vertices)]]);
+
+  var windingNumber = sides.map(function(side) {
+    var sideStartX = side[0][0],
+        sideStartY = side[0][1],
+        sideEndX = side[1][0],
+        sideEndY = side[1][1];
+
+    if (sideStartY <= y && sideEndY > y && isLeft([x, y], side) > 0) {
+      return 1;
+    } else if (sideStartY > y && sideEndY <= y && isLeft([x, y], side) < 0) {
+      return -1;
+    }
+
+    return 0;
+  }).reduce(function(accum, x) {
+    return accum + x;
+  });
+
+  return windingNumber > 0;
+}
 
 Nut.prototype.rotate=function(mouseX, mouseY) {
   var dragAngle = (
@@ -132,8 +171,23 @@ function angleTo(angleX, angleY, centerX, centerY) {
   return Math.atan2(angleX - centerX, angleY - centerY);
 }
 
+function isLeft(point, side) {
+  var x = point[0],
+      y = point[1],
+      sideStartX = side[0][0],
+      sideStartY = side[0][1],
+      sideEndX = side[1][0],
+      sideEndY = side[1][1];
+
+  return (sideEndX - sideStartX) * (y - sideStartY) - (x - sideStartX) * (sideEndY - sideStartY);
+}
+
 function toDegrees(angle) {
   return angle / Math.PI * 180;
+}
+
+function toRadians(angle) {
+  return angle * Math.PI / 180;
 }
 
 var nutList = [];
@@ -152,4 +206,6 @@ var svg = d3.select("svg")
             })
             .call(drag);
 
-nutList.push((new NutBuilder()).setCenter(400, 200).setContext(svg).build());
+nutList.push(
+  (new NutBuilder()).setCenter(400, 200).setContext(svg).build()
+);
