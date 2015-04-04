@@ -1546,7 +1546,6 @@ function Nut() {
 
   this.adjustmentAngle = 0;
   this.angle = 0;
-  this.hasRotated = false;
 }
 
 Nut.prototype.control=function(mouseX, mouseY) {
@@ -1602,44 +1601,17 @@ Nut.prototype.getVertices=function(isCanonical) {
   });
 }
 
-Nut.prototype.initControl=function(mouseX, mouseY) {
-  if (this.shouldTranslate(mouseX, mouseY)) {
+Nut.prototype.initControl=function(mouseX, mouseY, shiftKey) {
+  if (shiftKey) {
     this.controlFunc = this.translate;
     this.adjustmentTranslation = [-(mouseX - this.centerX), -(mouseY - this.centerY)];
-  } else if (this.isInPath(mouseX, mouseY)) {
+  } else {
     this.controlFunc = this.rotate;
     this.adjustmentAngle = (
       this.angle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
     );
-  } else {
-    this.controlFunc = function() {};
   }
 };
-
-Nut.prototype.isInPath=function(x, y) {
-  var vertices = this.getVertices(),
-      sides = _.zip(vertices.slice(0, vertices.length - 1), vertices.slice(1))
-               .concat([[_.last(vertices), _.first(vertices)]]);
-
-  var windingNumber = sides.map(function(side) {
-    var sideStartX = side[0][0],
-        sideStartY = side[0][1],
-        sideEndX = side[1][0],
-        sideEndY = side[1][1];
-
-    if (sideStartY <= y && sideEndY > y && isLeft([x, y], side) > 0) {
-      return 1;
-    } else if (sideStartY > y && sideEndY <= y && isLeft([x, y], side) < 0) {
-      return -1;
-    }
-
-    return 0;
-  }).reduce(function(accum, x) {
-    return accum + x;
-  });
-
-  return windingNumber > 0;
-}
 
 Nut.prototype.rotate=function(mouseX, mouseY) {
   var dragAngle = (
@@ -1692,11 +1664,15 @@ NutBuilder.prototype.setCenterRadius=function(r) {
 
 NutBuilder.prototype.setContext=function(context) {
   this.nut.context = context.append("path")
+                            .attr("id", nutCount.toString())
                             .attr("d", this.nut.getPath())
                             .attr(
                               "transform",
                               "translate(" + this.nut.centerX  + ", " + this.nut.centerY + ")"
                             );
+  console.log("count", nutCount);
+  nutCount++;
+
   return this;
 }
 
@@ -1710,17 +1686,6 @@ function angleTo(angleX, angleY, centerX, centerY) {
   return Math.atan2(angleX - centerX, angleY - centerY);
 }
 
-function isLeft(point, side) {
-  var x = point[0],
-      y = point[1],
-      sideStartX = side[0][0],
-      sideStartY = side[0][1],
-      sideEndX = side[1][0],
-      sideEndY = side[1][1];
-
-  return (sideEndX - sideStartX) * (y - sideStartY) - (x - sideStartX) * (sideEndY - sideStartY);
-}
-
 function toDegrees(angle) {
   return angle / Math.PI * 180;
 }
@@ -1730,23 +1695,23 @@ function toRadians(angle) {
 }
 
 var nutList = [];
+var nutCount = 0;
 
 var drag = d3.behavior.drag()
              .on("drag", function() {
-               _.map(nutList, function(n) {
-                 n.control(d3.event.x, d3.event.y);
-               });
+               nutList[parseInt(this.id)].control(d3.event.x, d3.event.y);
              });
-var svg = d3.select("svg")
-            .on("mousedown", function() {
-              _.map(nutList, function(n) {
-                n.initControl(d3.event.x, d3.event.y);
-              });
-            })
-            .call(drag);
+var svg = d3.select("svg");
 
 nutList.push(
-  (new NutBuilder()).setCenter(400, 200).setContext(svg).build()
+  (new NutBuilder()).setCenter(400, 200).setContext(svg).build(),
+  (new NutBuilder()).setCenter(700, 200).setContext(svg).build()
 );
+
+var nuts = svg.selectAll("path")
+              .on("mousedown", function() {
+                nutList[parseInt(this.id)].initControl(d3.event.x, d3.event.y, d3.event.shiftKey);
+              })
+              .call(drag);
 
 },{"underscore":1}]},{},[2]);
