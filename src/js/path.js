@@ -180,11 +180,17 @@ window.onload=function() {
 
   var drag = d3.behavior.drag()
                .on("drag", function() {
+                 // Firefox wants .x for drag events (even wrapped by D3...) and good old .clientX
+                 // for regular mouse events.
+                 var x = d3.event.x || d3.event.clientX;
+                 var y = d3.event.y || d3.event.clientY;
                  nutList[parseInt(this.id)].control(d3.event.x, d3.event.y);
                });
   var mousedown = function() {
-    var x = d3.event.x - svgLeft + window.scrollX;
-    var y = d3.event.y - svgTop + window.scrollY;
+    var x = d3.event.x || d3.event.clientX;
+    var y = d3.event.y || d3.event.clientY;
+    x = x - svgLeft + window.scrollX;
+    y = y - svgTop + window.scrollY;
 
     nutList[parseInt(this.id)].initControl(x, y, d3.event.shiftKey);
   }
