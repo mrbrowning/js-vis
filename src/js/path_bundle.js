@@ -1544,13 +1544,15 @@ function Nut() {
   this.radius = 100;
   this.centerRadius = 50;
 
+  this.color = "#ee0";
+
   this.adjustmentAngle = 0;
   this.angle = 0;
 }
 
 Nut.prototype.control=function(mouseX, mouseY) {
   this.controlFunc(mouseX, mouseY);
-}
+};
 
 Nut.prototype.draw=function() {
   this.context.attr(
@@ -1560,7 +1562,7 @@ Nut.prototype.draw=function() {
       "translate(" + this.centerX + ", " + this.centerY + ")"
     )
   );
-}
+};
 
 Nut.prototype.getPath=function() {
   var _this = this,
@@ -1579,7 +1581,7 @@ Nut.prototype.getPath=function() {
   path.push("A" + arcRadius + "," + arcRadius + " 0 0,0 0," + _this.centerRadius);
 
   return path.join("");
-}
+};
 
 Nut.prototype.getVertices=function(isCanonical) {
   var _this = this;
@@ -1599,17 +1601,17 @@ Nut.prototype.getVertices=function(isCanonical) {
 
     return [x, y];
   });
-}
+};
 
 Nut.prototype.initControl=function(mouseX, mouseY, shiftKey) {
   if (shiftKey) {
-    this.controlFunc = this.translate;
-    this.adjustmentTranslation = [-(mouseX - this.centerX), -(mouseY - this.centerY)];
-  } else {
     this.controlFunc = this.rotate;
     this.adjustmentAngle = (
       this.angle + toDegrees(angleTo(mouseX, mouseY, this.centerX, this.centerY))
     );
+  } else {
+    this.controlFunc = this.translate;
+    this.adjustmentTranslation = [-(mouseX - this.centerX), -(mouseY - this.centerY)];
   }
 };
 
@@ -1626,64 +1628,74 @@ Nut.prototype.rotate=function(mouseX, mouseY) {
   }
   this.angle = dragAngle;
   this.draw();
-}
+};
 
 Nut.prototype.shouldTranslate=function(mouseX, mouseY) {
   var distanceX = mouseX - this.centerX;
   var distanceY = mouseY - this.centerY;
 
   return Math.sqrt(distanceX * distanceX + distanceY * distanceY) < this.centerRadius;
-}
+};
 
 Nut.prototype.translate=function(mouseX, mouseY) {
   this.centerX = mouseX + this.adjustmentTranslation[0];
   this.centerY = mouseY + this.adjustmentTranslation[1];
   this.draw();
-}
+};
 
 function NutBuilder() {
   this.nut = new Nut();
-};
+}
 
 NutBuilder.prototype.build=function() {
   return this.nut;
-}
+};
 
 NutBuilder.prototype.setCenter=function(x, y) {
   this.nut.centerX = x;
   this.nut.centerY = y;
 
   return this;
-}
+};
 
 NutBuilder.prototype.setCenterRadius=function(r) {
   this.nut.centerRadius = r;
 
   return this;
-}
+};
+
+NutBuilder.prototype.setColor=function(c) {
+  this.nut.color = c;
+
+  return this;
+};
 
 NutBuilder.prototype.setContext=function(context) {
   this.nut.context = context.append("path")
                             .attr("id", nutCount.toString())
                             .attr("d", this.nut.getPath())
+                            .style("fill", this.nut.color)
                             .attr(
                               "transform",
                               "translate(" + this.nut.centerX  + ", " + this.nut.centerY + ")"
                             );
-  console.log("count", nutCount);
   nutCount++;
 
   return this;
-}
+};
 
 NutBuilder.prototype.setRadius=function(r) {
   this.nut.radius = r;
 
   return this;
-}
+};
 
 function angleTo(angleX, angleY, centerX, centerY) {
   return Math.atan2(angleX - centerX, angleY - centerY);
+}
+
+function formatColor(r, g, b) {
+  return "rgb(" + r + ", " + g + ", " + b + ")";
 }
 
 function toDegrees(angle) {
@@ -1694,24 +1706,50 @@ function toRadians(angle) {
   return angle * Math.PI / 180;
 }
 
-var nutList = [];
-var nutCount = 0;
+window.onload=function() {
+  nutList = [];
+  nutCount = 0;
 
-var drag = d3.behavior.drag()
-             .on("drag", function() {
-               nutList[parseInt(this.id)].control(d3.event.x, d3.event.y);
-             });
-var svg = d3.select("svg");
+  var svg = d3.select("svg");
+  var svgWidth = svg.property("width").baseVal.value;
+  var svgHeight = svg.property("height").baseVal.value;
+  var svgRect = document.getElementsByTagName("div")[0].getBoundingClientRect();
+  var svgTop = svgRect.top;
+  var svgLeft = svgRect.left;
 
-nutList.push(
-  (new NutBuilder()).setCenter(400, 200).setContext(svg).build(),
-  (new NutBuilder()).setCenter(700, 200).setContext(svg).build()
-);
+  var drag = d3.behavior.drag()
+               .on("drag", function() {
+                 nutList[parseInt(this.id)].control(d3.event.x, d3.event.y);
+               });
+  var mousedown = function() {
+    var x = d3.event.x - svgLeft + window.scrollX;
+    var y = d3.event.y - svgTop + window.scrollY;
 
-var nuts = svg.selectAll("path")
-              .on("mousedown", function() {
-                nutList[parseInt(this.id)].initControl(d3.event.x, d3.event.y, d3.event.shiftKey);
-              })
+    nutList[parseInt(this.id)].initControl(x, y, d3.event.shiftKey);
+  }
+
+  nutList.push((new NutBuilder()).setCenter(400, 200).setContext(svg).build());
+
+  var nuts = svg.selectAll("path")
+                .on("mousedown", mousedown)
+                .call(drag);
+
+  document.getElementById("addnut").onclick = function() {
+    var radius = 100,
+        x = Math.floor(Math.random() * (svgWidth - 2 * radius) + radius),
+        y = Math.floor(Math.random() * (svgHeight - 2 * radius) + radius),
+        r = Math.floor(Math.random() * 256),
+        g = Math.floor(Math.random() * 256),
+        b = Math.floor(Math.random() * 256);
+
+    nutList.push(
+      (new NutBuilder()).setCenter(x, y).setColor(formatColor(r, g, b)).setContext(svg).build()
+    );
+
+    nuts = svg.selectAll("path")
+              .on("mousedown", mousedown)
               .call(drag);
+  };
+};
 
 },{"underscore":1}]},{},[2]);

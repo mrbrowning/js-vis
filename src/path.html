@@ -5,7 +5,21 @@
     <style>
       body {
         margin: 0px;
-        padding: 0px;
+        padding: 10px 0px 0px 0px;
+      }
+
+      input[type=button] {
+        background-color: #fcd553;
+        border: 1px solid #888;
+      }
+
+      input[type=button]:active {
+        background-color: #eab331;
+      }
+
+      p {
+        font-family: helvetica, arial;
+        font-size: 10pt;
       }
 
       path {
@@ -14,11 +28,24 @@
         stroke: #014;
         stroke-width: 2px;
       }
+
+      svg {
+        border: 1px solid #888;
+      }
+
+      .container {
+        margin: auto;
+        width: 1100px;
+      }
     </style>
   </head>
   <body>
-    <svg width="1100" height="650">
-    </svg>
+    <div class="container">
+      <svg width="1100" height="650">
+      </svg>
+      <p><input type="button" id="addnut" value="add nut">(shift+click to rotate)</p>
+      <p></p>
+    </div>
   </body>
   <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
   <script type="text/javascript" src="js/path_bundle.js"></script>
